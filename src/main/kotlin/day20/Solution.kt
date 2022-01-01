@@ -8,7 +8,7 @@ val dir = arrayOf(Pair(-1, -1), Pair(-1, 0), Pair(-1, +1), Pair(0, -1), Pair(0, 
 )
 
 fun main() {
-    val lines = readLines("/day20/input.txt")
+    val lines = readLines("/day20/input2.txt")
     val enhanceLookUp = lines[0]
     val image = lines.drop(2)
 
@@ -19,53 +19,65 @@ fun main() {
 }
 
 fun enhanceImage(enhanceLookUp: String, image: List<String>, times: Int): Int {
-    var grid = getImageGrid(image)
-    val rows = grid.size
-    val cols = grid[0].size
+    var grid = buildGrid(image, '.')
 
     for(t in 1..times) {
-        val newGrid = Array(rows) { Array(cols) { '.' } }
-        for(i in 1 until rows - 1) {
-            for(j in 1 until cols - 1) {
-                val binaryString = getThreeRowsForPixel1(Pair(i, j), grid).map { if(it == '.') '0' else '1' }.joinToString("")
-                val newPixelValue = enhanceLookUp[binaryString.toInt(2)]
-                newGrid[i][j] = newPixelValue
-            }
+        val newGrid = HashMap<Pair<Int, Int>, Char>()
+        var defaultPixelValue = '.'
+        var nextDefaultPixelValue = '.'
+
+        if(enhanceLookUp.first() == '#' && enhanceLookUp.last() == '.') {
+            defaultPixelValue = if(t % 2 == 0) '#' else '.'
+            nextDefaultPixelValue = if(t % 2 == 0) '.' else '#'
+        } else if(enhanceLookUp.first() == '#' && enhanceLookUp.last() == '#') {
+            defaultPixelValue = if(t == 2 && defaultPixelValue == '.') '#' else defaultPixelValue
+            nextDefaultPixelValue = '#'
+        }
+
+        for(p in grid.keys) {
+            val binaryString = getBinaryStringForPixel(p, grid, defaultPixelValue)
+                .map { if(it == '#') 1 else 0 }.joinToString("")
+            val newPixelValue = enhanceLookUp[binaryString.toInt(2)]
+            newGrid[p] = newPixelValue
         }
         grid = newGrid
-        setBorders(grid, t + 1)
+        expandGrid(grid, nextDefaultPixelValue)
     }
 
-    return grid.sumOf { it.count { c -> c == '#' } }
+    return grid.values.count { it == '#' }
 }
 
-fun setBorders(grid: Array<Array<Char>>, t: Int) {
-    val char = if(t % 2 == 0) '#' else '.'
-    for(col in grid[0].indices) {
-        grid[0][col] = char
-        grid.last()[col] = char
-    }
-    for(row in grid.indices) {
-        grid[row][0] = char
-        grid[row][grid[row].lastIndex] = char
+fun expandGrid(pixels: MutableMap<Pair<Int, Int>, Char>, defaultPixelValue: Char) {
+    val minRow = pixels.keys.minOf { it.first } - 1
+    val maxRow = pixels.keys.maxOf { it.first } + 1
+    val minCol = pixels.keys.minOf { it.second } - 1
+    val maxCol = pixels.keys.maxOf { it.second } + 1
+    for(row in minRow..maxRow) {
+        for(col in minCol..maxCol) {
+            val p = Pair(row, col)
+            pixels[p] = pixels.getOrDefault(p, defaultPixelValue)
+        }
     }
 }
 
-fun getImageGrid(image: List<String>): Array<Array<Char>> {
-    val rows = image.size
-    val cols = image[0].length
-    val grid = Array(600) { Array(600) { '.' } }
-    for(i in grid.indices) {
-        for(j in grid[i].indices) {
-            if(i >= 300 && i < rows + 300 && j >= 300 && j < cols + 300) {
-                grid[i][j] = image[i - 300][j - 300]
+fun getBinaryStringForPixel(
+    p: Pair<Int, Int>,
+    pixels: MutableMap<Pair<Int, Int>, Char>,
+    defaultPixelValue: Char
+): String {
+    return dir.map { Pair(p.first + it.first, p.second + it.second) }
+        .map { pixels.getOrDefault(it, defaultPixelValue) }.joinToString("")
+}
+
+fun buildGrid(image: List<String>, defaultChar: Char): MutableMap<Pair<Int, Int>, Char> {
+    val pixels = HashMap<Pair<Int, Int>, Char>()
+    for(i in image.indices) {
+        for(j in image[i].indices) {
+            if(image[i][j] != defaultChar) {
+                pixels[Pair(i, j)] = image[i][j]
             }
         }
     }
-    return grid
-}
-
-fun getThreeRowsForPixel1(p: Pair<Int, Int>, grid: Array<Array<Char>>): String {
-    return dir.map { Pair(p.first + it.first, p.second + it.second) }
-        .map { grid[it.first][it.second] }.joinToString("")
+    expandGrid(pixels, defaultChar)
+    return pixels
 }
