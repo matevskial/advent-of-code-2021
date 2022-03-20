@@ -94,7 +94,8 @@ class BoxStructureBuilder(private val boxes: List<Box>) {
             return null
         }
         processedBoxes = ArrayList()
-        boxesToProcess = boxes.reversed()
+        boxesToProcess = removeContainedBoxes().reversed()
+
         val boxNodes = ArrayList<BoxNode>()
         for(box in boxesToProcess) {
             if(!box.isOperationOn()) {
@@ -105,6 +106,21 @@ class BoxStructureBuilder(private val boxes: List<Box>) {
             processedBoxes.add(box)
         }
         return BoxStructure(boxNodes)
+    }
+
+    private fun removeContainedBoxes(): List<Box> {
+        val result = LinkedHashSet<Box>()
+        for(box in boxes) {
+            val boxesToDelete = HashSet<Box>()
+            for(box1 in result) {
+                if(box.contains(box1)) {
+                    boxesToDelete.add(box1)
+                }
+            }
+            result.removeAll(boxesToDelete)
+            result.add(box)
+        }
+        return result.toList()
     }
 
     private fun buildBoxNode(box: Box): BoxNode {
@@ -221,6 +237,7 @@ data class Box(val bottomLeft: Point, val topRight: Point) {
     fun contains(box: Box): Boolean {
         return bottomLeft.x <= box.bottomLeft.x && topRight.x >= box.topRight.x
                 && bottomLeft.y <= box.bottomLeft.y && topRight.y >= box.topRight.y
+                && bottomLeft.z <= box.bottomLeft.z && topRight.z >= box.topRight.z
     }
 
     fun isOperationOn(): Boolean {
