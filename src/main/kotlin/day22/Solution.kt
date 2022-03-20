@@ -13,48 +13,19 @@ fun main() {
     }
 
     val boxes = rebootSteps.map { Box(Point(it.second[0], it.second[2], it.second[4]), Point(it.second[1], it.second[3], it.second[5]), it.first) }
+    val boxesPart1 = boxes.mapNotNull { it.getIntersection(Box(Point(-50, -50, -50), Point(50, 50, 50)), it.operation) }
 
-    val areaCalculatorPart1 = AreaCalculatorPart1(boxes)
+    val areaCalculatorPart1 = AreaCalculatorUsingBoxStructure(BoxStructureBuilder(boxesPart1))
     println("part1: ${areaCalculatorPart1.calculateArea()}")
 
-    val areaCalculatorPart2 = AreaCalculatorPart2(BoxStructureBuilder(boxes))
-    println("part2: ${areaCalculatorPart2.calculateArea()}")
+    val areaCalculatorUsingBoxStructure = AreaCalculatorUsingBoxStructure(BoxStructureBuilder(boxes))
+    println("part2: ${areaCalculatorUsingBoxStructure.calculateArea()}")
 
     val areaCalculatorUsingSlices = AreaCalculatorUsingSlices(boxes)
     println("part2: ${areaCalculatorUsingSlices.calculateArea()}")
 }
 
-class AreaCalculatorPart1(private val boxes: List<Box>) {
-    fun calculateArea(): Int {
-        val cuboids = HashSet<Triple<Int, Int, Int>>()
-        val initializationProcedureRegion = -50..50
-        for(box in boxes) {
-            for(x in box.bottomLeft.x..box.topRight.x) {
-                if(x !in initializationProcedureRegion) {
-                    continue
-                }
-                for(y in box.bottomLeft.y..box.topRight.y) {
-                    if(y !in initializationProcedureRegion) {
-                        continue
-                    }
-                    for(z in box.bottomLeft.z..box.topRight.z) {
-                        if(z !in initializationProcedureRegion) {
-                            continue
-                        }
-                        if(box.isOperationOn()) {
-                            cuboids.add(Triple(x, y, z))
-                        } else {
-                            cuboids.remove(Triple(x, y, z))
-                        }
-                    }
-                }
-            }
-        }
-        return cuboids.size
-    }
-}
-
-class AreaCalculatorPart2(private val boxStructureBuilder: BoxStructureBuilder) {
+class AreaCalculatorUsingBoxStructure(private val boxStructureBuilder: BoxStructureBuilder) {
 
     fun calculateArea(): Long {
         val boxStructure = boxStructureBuilder.build()
@@ -150,7 +121,7 @@ class BoxNode(private val box: Box, private val boxStructure: BoxStructure?) {
 
 data class Box(val bottomLeft: Point, val topRight: Point) {
 
-    private var operation: String
+    var operation: String
 
     init {
         if(bottomLeft.x > topRight.x) {
@@ -169,7 +140,7 @@ data class Box(val bottomLeft: Point, val topRight: Point) {
         this.operation = operation
     }
 
-    fun getIntersection(box: Box): Box? {
+    fun getIntersection(box: Box, operation: String): Box? {
         if(doesNotIntersect(box)) {
             return null
         }
@@ -182,7 +153,11 @@ data class Box(val bottomLeft: Point, val topRight: Point) {
         val topRightY = if(topRight.y > box.topRight.y) box.topRight.y else topRight.y
         val topRightZ = if(topRight.z > box.topRight.z) box.topRight.z else topRight.z
 
-        return Box(Point(bottomLeftX, bottomLeftY, bottomLeftZ), Point(topRightX, topRightY, topRightZ))
+        return Box(Point(bottomLeftX, bottomLeftY, bottomLeftZ), Point(topRightX, topRightY, topRightZ), operation)
+    }
+
+    fun getIntersection(box: Box): Box? {
+        return getIntersection(box, "on")
     }
 
     fun doesIntersect(box: Box): Boolean {
