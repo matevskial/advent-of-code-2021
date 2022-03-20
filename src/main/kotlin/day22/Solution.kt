@@ -19,6 +19,9 @@ fun main() {
 
     val areaCalculatorPart2 = AreaCalculatorPart2(BoxStructureBuilder(boxes))
     println("part2: ${areaCalculatorPart2.calculateArea()}")
+
+    val areaCalculatorUsingSlices = AreaCalculatorUsingSlices(boxes)
+    println("part2: ${areaCalculatorUsingSlices.calculateArea()}")
 }
 
 class AreaCalculatorPart1(private val boxes: List<Box>) {
@@ -56,6 +59,28 @@ class AreaCalculatorPart2(private val boxStructureBuilder: BoxStructureBuilder) 
     fun calculateArea(): Long {
         val boxStructure = boxStructureBuilder.build()
         return boxStructure?.getArea() ?: 0L
+    }
+}
+
+class AreaCalculatorUsingSlices(private val boxes: List<Box>) {
+    private lateinit var resultBoxes: MutableSet<Box>
+
+    fun calculateArea(): Long {
+        resultBoxes = HashSet()
+        for(box in boxes) {
+            val boxesThatIntersectWithCurrentBox = getBoxesThatIntersectWith(box)
+            resultBoxes.removeAll(boxesThatIntersectWithCurrentBox)
+            val slices = boxesThatIntersectWithCurrentBox.map { it.getSlices(box) }.flatten()
+            resultBoxes.addAll(slices)
+            if(box.isOperationOn()) {
+                resultBoxes.add(box)
+            }
+        }
+        return resultBoxes.sumOf { it.getArea() }
+    }
+
+    private fun getBoxesThatIntersectWith(box: Box): Set<Box> {
+        return resultBoxes.filter { it.doesIntersect(box) }.toSet()
     }
 }
 
@@ -144,6 +169,10 @@ data class Box(val bottomLeft: Point, val topRight: Point) {
         return Box(Point(bottomLeftX, bottomLeftY, bottomLeftZ), Point(topRightX, topRightY, topRightZ))
     }
 
+    fun doesIntersect(box: Box): Boolean {
+        return !doesNotIntersect(box)
+    }
+
     private fun doesNotIntersect(box: Box): Boolean {
         return topRight.x < box.bottomLeft.x || bottomLeft.x > box.topRight.x
                 || topRight.y < box.bottomLeft.y || bottomLeft.y > box.topRight.y
@@ -152,6 +181,37 @@ data class Box(val bottomLeft: Point, val topRight: Point) {
 
     fun getArea(): Long {
         return (abs(topRight.x - bottomLeft.x).toLong() + 1L) * (abs(topRight.y - bottomLeft.y).toLong() + 1L) * (abs(topRight.z - bottomLeft.z).toLong() + 1L)
+    }
+
+    fun getSlices(box: Box): Set<Box> {
+        val intersection = getIntersection(box) ?: return emptySet()
+        val slices = HashSet<Box>()
+
+        if(topRight.z > intersection.topRight.z) {
+            slices.add(Box(Point(bottomLeft.x, bottomLeft.y, intersection.topRight.z + 1), Point(topRight.x, topRight.y, topRight.z)))
+        }
+
+        if(bottomLeft.z < intersection.bottomLeft.z) {
+            slices.add(Box(Point(bottomLeft.x, bottomLeft.y, bottomLeft.z), Point(topRight.x, topRight.y, intersection.bottomLeft.z - 1)))
+        }
+
+        if(bottomLeft.y < intersection.bottomLeft.y) {
+            slices.add(Box(Point(bottomLeft.x, bottomLeft.y, intersection.bottomLeft.z), Point(topRight.x, intersection.bottomLeft.y - 1, intersection.topRight.z)))
+        }
+
+        if(topRight.y > intersection.topRight.y) {
+            slices.add(Box(Point(bottomLeft.x, intersection.topRight.y + 1, intersection.bottomLeft.z), Point(topRight.x, topRight.y, intersection.topRight.z)))
+        }
+
+        if(bottomLeft.x < intersection.bottomLeft.x) {
+            slices.add(Box(Point(bottomLeft.x, intersection.bottomLeft.y, intersection.bottomLeft.z), Point(intersection.bottomLeft.x - 1, intersection.topRight.y, intersection.topRight.z)))
+        }
+
+        if(topRight.x > intersection.topRight.x) {
+            slices.add(Box(Point(intersection.topRight.x + 1, intersection.bottomLeft.y, intersection.bottomLeft.z), Point(topRight.x, intersection.topRight.y, intersection.topRight.z)))
+        }
+
+        return slices
     }
 
     override fun toString(): String {
